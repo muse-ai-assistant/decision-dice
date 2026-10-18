@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>赛博决策骰子 · Cyber Decision Dice</title>
+<style>
+  :root{
+    --bg:#0a0a14; --panel:#12121f; --cyan:#00f0ff; --mag:#ff2fb3;
+    --violet:#8b5cf6; --text:#e8e8f0; --dim:#8a8a9e;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+    padding:32px 16px 64px;
+    background-image:
+      radial-gradient(ellipse 60% 40% at 50% -10%, rgba(139,92,246,.18), transparent),
+      radial-gradient(ellipse 50% 35% at 90% 110%, rgba(0,240,255,.10), transparent);
+  }
+  .wrap{width:100%; max-width:640px;}
+  header{text-align:center; margin-bottom:28px;}
+  h1{
+    font-size:2rem; letter-spacing:.12em; margin-bottom:6px;
+    background:linear-gradient(90deg,var(--cyan),var(--mag));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 32px rgba(0,240,255,.25);
+  }
+  .sub{color:var(--dim); font-size:.85rem; letter-spacing:.28em;
+    font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .panel{
+    background:var(--panel); border:1px solid #23233a; border-radius:16px;
+    padding:22px; margin-bottom:18px;
+    box-shadow:0 8px 40px rgba(0,0,0,.45);
+  }
+  label{display:block; color:var(--dim); font-size:.8rem; margin-bottom:8px; letter-spacing:.1em;}
+  textarea{
+    width:100%; min-height:96px; resize:vertical;
+    background:#0b0b16; color:var(--text); border:1px solid #2c2c46;
+    border-radius:10px; padding:12px 14px; font-size:1rem; line-height:1.7;
+    font-family:inherit; outline:none; transition:border .2s, box-shadow .2s;
+  }
+  textarea:focus{border-color:var(--cyan); box-shadow:0 0 0 3px rgba(0,240,255,.12);}
+  .quick{margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{
+    font-size:.78rem; color:var(--dim); border:1px solid #2c2c46; border-radius:999px;
+    padding:5px 12px; cursor:pointer; transition:all .2s; background:transparent;
+  }
+  .chip:hover{color:var(--cyan); border-color:var(--cyan);}
+  .btn{
+    display:block; width:100%; margin-top:16px; padding:15px;
+    font-size:1.1rem; letter-spacing:.3em; font-weight:700; cursor:pointer;
+    color:#06121a; border:none; border-radius:12px;
+    background:linear-gradient(90deg,var(--cyan),#7df9ff);
+    box-shadow:0 0 24px rgba(0,240,255,.35);
+    transition:transform .12s, box-shadow .2s;
+    font-family:inherit;
+  }
+  .btn:hover{box-shadow:0 0 36px rgba(0,240,255,.55);}
+  .btn:active{transform:scale(.985);}
+  .btn:disabled{opacity:.45; cursor:wait; box-shadow:none;}
+  #stage{
+    min-height:190px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:12px 6px;
+  }
+  #slot{
+    font-size:2.1rem; font-weight:800; letter-spacing:.06em; min-height:3.2rem;
+    display:flex; align-items:center;
+  }
+  #slot.rolling{
+    background:linear-gradient(90deg,var(--cyan),var(--mag),var(--violet),var(--cyan));
+    background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:slide 1s linear infinite;
+  }
+  @keyframes slide{to{background-position:300% 0;}}
+  #slot.locked{
+    color:#fff; text-shadow:0 0 18px var(--cyan), 0 0 46px rgba(0,240,255,.5);
+    animation:pop .45s cubic-bezier(.2,1.6,.4,1);
+  }
+  @keyframes pop{0%{transform:scale(.6); opacity:0;}100%{transform:scale(1); opacity:1;}}
+  #verdict{margin-top:14px; color:var(--dim); font-size:.95rem; min-height:1.6rem; line-height:1.7;}
+  #verdict b{color:var(--mag); font-weight:600;}
+  .row{display:flex; gap:10px; margin-top:14px;}
+  .ghost{
+    flex:1; padding:10px; font-size:.85rem; letter-spacing:.15em; cursor:pointer;
+    background:transparent; color:var(--dim); border:1px solid #2c2c46; border-radius:10px;
+    transition:all .2s; font-family:inherit;
+  }
+  .ghost:hover{color:var(--text); border-color:var(--dim);}
+  #history{list-style:none; margin-top:6px;}
+  #history li{
+    display:flex; justify-content:space-between; gap:12px;
+    padding:9px 4px; border-bottom:1px dashed #23233a; font-size:.9rem;
+  }
+  #history .t{color:var(--dim); font-size:.75rem; white-space:nowrap;
+    font-family:ui-monospace,Menlo,monospace;}
+  #history .v{color:var(--cyan);}
+  .empty{color:#3d3d55; text-align:center; padding:14px; font-size:.85rem;}
+  footer{margin-top:26px; color:#3d3d55; font-size:.75rem; letter-spacing:.2em; text-align:center;
+    font-family:ui-monospace,Menlo,monospace;}
+  .flash{animation:flash .5s;}
+  @keyframes flash{0%{box-shadow:0 0 0 rgba(0,240,255,0);}40%{box-shadow:0 0 60px rgba(0,240,255,.45);}100%{box-shadow:0 8px 40px rgba(0,0,0,.45);}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>赛博决策骰子</h1>
+    <div class="sub">CYBER DECISION DICE</div>
+  </header>
+
+  <div class="panel">
+    <label>输入选项（每行一个，或用逗号/顿号分隔）</label>
+    <textarea id="opts" placeholder="火锅&#10;烧烤&#10;轻食沙拉&#10;泡面加蛋"></textarea>
+    <div class="quick">
+      <button class="chip" data-q="火锅,烧烤,轻食,泡面加蛋">今晚吃啥</button>
+      <button class="chip" data-q="早睡,熬夜刷手机,起来加班">今晚干啥</button>
+      <button class="chip" data-q="买,先加入购物车,再想想">买不买</button>
+      <button class="chip" data-q="跑步,躺平,散步">动不动</button>
+    </div>
+    <button class="btn" id="go">启动赛博占卜</button>
+  </div>
+
+  <div class="panel" id="panel-stage">
+    <div id="stage">
+      <div id="slot">等待指令…</div>
+      <div id="verdict"></div>
+    </div>
+    <div class="row">
+      <button class="ghost" id="copy">复制结果</button>
+      <button class="ghost" id="again">再来一次</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <label>占卜记录</label>
+    <ul id="history"></ul>
+    <div class="row"><button class="ghost" id="clear">清空记录</button></div>
+  </div>
+
+  <footer>DECISION ENGINE v1.0 · 骰子从不说谎</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const verdicts = [
+  "天机已定，<b>莫要三心二意</b>。",
+  "骰子从不说谎，<b>说谎的是你的心</b>。",
+  "选它，<b>今晚不会后悔</b>。",
+  "命运的齿轮开始转动——咔哒，<b>停了</b>。",
+  "本骰子已与宇宙暗物质校准，<b>结果绝对公正</b>。",
+  "犹豫就会败北，<b>这个就是答案</b>。",
+  "大数据算过了，<b>你命中注定选它</b>。",
+  "不要问为什么，<b>问就是天意</b>。",
+  "平行宇宙里你选了别的，<b>但那个宇宙已经塌了</b>。",
+  "骰子落地，尘埃落定，<b>干就完了</b>。",
+  "我掷了 64800 次，<b>次次都是它</b>。",
+  "你的纠结已上传云端，<b>云端说：就它</b>。",
+  "占卜师正在解读星象……解读完毕：<b>没错</b>。",
+  "这不是随机，<b>这是命运</b>。",
+  "如果你不满意，可以再来一次——<b>但命运大概率不变</b>。",
+  "骰子说：<b>相信我</b>。",
+  "经过量子纠缠运算，<b>答案唯一</b>。",
+  "别划了，<b>这就是今晚的剧本</b>。",
+  "神谕降临，凡人照做，<b>谢谢</b>。",
+  "骰子冒烟了也要告诉你：<b>选它</b>。"
+];
+
+function parseOpts(){
+  return $('opts').value.split(/[\n,，、;；|]/).map(s=>s.trim()).filter(Boolean);
+}
+function now(){ const d=new Date(); return d.toTimeString().slice(0,5); }
+
+let rolling=false;
+function roll(){
+  if(rolling) return;
+  const opts=parseOpts();
+  if(opts.length<2){ $('slot').textContent='至少输入两个选项…'; $('slot').className=''; $('verdict').textContent=''; return; }
+  rolling=true; $('go').disabled=true;
+  const slot=$('slot'); slot.className='rolling'; $('verdict').textContent='';
+  const target=Math.floor(Math.random()*opts.length);
+  const total=28+Math.floor(Math.random()*10);
+  let i=0;
+  (function tick(){
+    slot.textContent=opts[Math.floor(Math.random()*opts.length)];
+    i++;
+    if(i<total){ setTimeout(tick, 40+i*i*1.1); }
+    else{
+      slot.textContent=opts[target]; slot.className='locked';
+      const v=verdicts[Math.floor(Math.random()*verdicts.length)];
+      $('verdict').innerHTML=v;
+      $('panel-stage').classList.remove('flash'); void $('panel-stage').offsetWidth;
+      $('panel-stage').classList.add('flash');
+      pushHistory(opts[target]);
+      rolling=false; $('go').disabled=false;
+    }
+  })();
+}
+function pushHistory(text){
+  let h=[]; try{ h=JSON.parse(localStorage.getItem('cdd-h')||'[]'); }catch(e){}
+  h.unshift({t:now(), v:text}); h=h.slice(0,20);
+  localStorage.setItem('cdd-h', JSON.stringify(h)); renderHistory();
+}
+function renderHistory(){
+  let h=[]; try{ h=JSON.parse(localStorage.getItem('cdd-h')||'[]'); }catch(e){}
+  const ul=$('history'); ul.innerHTML='';
+  if(!h.length){ ul.innerHTML='<div class="empty">还没有占卜记录，命运虚位以待</div>'; return; }
+  h.forEach(x=>{
+    const li=document.createElement('li');
+    li.innerHTML='<span class="v"></span><span class="t"></span>';
+    li.querySelector('.v').textContent=x.v; li.querySelector('.t').textContent=x.t;
+    ul.appendChild(li);
+  });
+}
+$('go').onclick=roll;
+$('again').onclick=roll;
+$('clear').onclick=()=>{ localStorage.removeItem('cdd-h'); renderHistory(); };
+$('copy').onclick=()=>{
+  const t=$('slot').textContent;
+  if(!t||t==='等待指令…') return;
+  navigator.clipboard.writeText('赛博决策骰子：'+t).then(()=>{ $('copy').textContent='已复制 ✓'; setTimeout(()=>$('copy').textContent='复制结果',1200); });
+};
+document.querySelectorAll('.chip').forEach(c=>{
+  c.onclick=()=>{ $('opts').value=c.dataset.q.split(',').join('\n'); };
+});
+$('opts').addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='Enter') roll(); });
+renderHistory();
+</script>
+</body>
+</html>
